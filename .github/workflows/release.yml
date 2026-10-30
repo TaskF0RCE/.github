@@ -40,10 +40,11 @@ jobs:
         if: steps.release.outputs.prs_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          PR_JSON: ${{ steps.release.outputs.pr }}
           CI_WORKFLOW: ${{ inputs.ci-workflow }}
         run: |
-          gh workflow run "$CI_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          branch=$(jq -r '.headBranchName' <<< "$PR_JSON")
+          gh workflow run "$CI_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$branch"
           echo "📝 PR de release prête : approuvez-la puis mergez-la depuis le dashboard." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Résumé
