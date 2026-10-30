@@ -1,0 +1,53 @@
+# Release réutilisable, basée sur release-please (Conventional Commits + SemVer).
+#
+# - Bouton « Nouvelle release » du dashboard (workflow_dispatch) : ouvre ou met à jour
+#   la PR de release « chore(main): release x.y.z » avec la version et le CHANGELOG.
+# - Push sur main : si cette PR vient d'être mergée, crée le tag et la release GitHub.
+name: Release (réutilisable)
+
+on:
+  workflow_call:
+    inputs:
+      ci-workflow:
+        description: Fichier du workflow CI du repo, relancé sur la PR de release
+        type: string
+        default: ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-pull-request: ${{ github.event_name != 'workflow_dispatch' }}
+
+      # Une PR ouverte avec le token automatique de GitHub ne déclenche pas la CI,
+      # et sans CI verte la PR de release ne peut pas être mergée. On la lance à la main.
+      - name: Lancer la CI sur la PR de release
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          CI_WORKFLOW: ${{ inputs.ci-workflow }}
+        run: |
+          gh workflow run "$CI_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          echo "📝 PR de release prête : approuvez-la puis mergez-la depuis le dashboard." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Résumé
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: echo "🎉 Release $TAG publiée." >> "$GITHUB_STEP_SUMMARY"

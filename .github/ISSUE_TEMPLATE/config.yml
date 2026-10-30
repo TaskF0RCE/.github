@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📊 Dashboard VeD Opps
+    url: https://taskf0rce.github.io/VeD_Opps/
+    about: Pour créer une feature (issue + branche + PR) en un clic.

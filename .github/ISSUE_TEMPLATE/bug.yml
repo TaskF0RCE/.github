@@ -1,0 +1,50 @@
+name: 🐛 Bug
+description: Quelque chose ne marche pas comme prévu
+labels: ["bug"]
+# Ajoute l'issue au kanban de l'orga (le numéro est dans l'URL du projet).
+projects: ["TaskF0RCE/1"]
+body:
+  - type: markdown
+    attributes:
+      value: Merci ! Plus c'est précis, plus c'est rapide à corriger.
+  - type: textarea
+    id: what
+    attributes:
+      label: Que se passe-t-il ?
+      description: Décris le problème en une ou deux phrases.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Comment le reproduire ?
+      placeholder: |
+        1. Lancer l'appli
+        2. Cliquer sur …
+        3. Voir l'erreur
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qu'est-ce qui devrait se passer ?
+  - type: input
+    id: version
+    attributes:
+      label: Version ou branche
+      placeholder: v0.3.1, main, feature/…
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité
+      options:
+        - basse
+        - moyenne
+        - haute
+      default: 1
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs ou captures d'écran
+      description: Colle les messages d'erreur ici (ils seront mis en forme automatiquement).
+      render: shell

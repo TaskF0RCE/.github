@@ -1,0 +1,13 @@
+[
+  { "name": "bug", "color": "d73a4a", "description": "Quelque chose ne marche pas" },
+  { "name": "feature", "color": "a2eeef", "description": "Nouvelle fonctionnalité" },
+  { "name": "docs", "color": "0075ca", "description": "Documentation" },
+  { "name": "question", "color": "d876e3", "description": "Besoin d'infos ou d'aide" },
+  { "name": "bonne première issue", "color": "7057ff", "description": "Facile, idéale pour commencer" },
+  { "name": "priorité: haute", "color": "b60205", "description": "À traiter en premier" },
+  { "name": "priorité: moyenne", "color": "fbca04", "description": "À traiter bientôt" },
+  { "name": "priorité: basse", "color": "0e8a16", "description": "Quand on a le temps" },
+  { "name": "en cours", "color": "c5def5", "description": "PR pas encore prête pour la review" },
+  { "name": "bloqué", "color": "000000", "description": "En attente de quelque chose" },
+  { "name": "dépendances", "color": "0366d6", "description": "Mise à jour de dépendances" }
+]
