@@ -1,0 +1,41 @@
+name: ✨ Feature
+description: Proposer une nouvelle fonctionnalité ou une amélioration
+labels: ["feature"]
+# Ajoute l'issue au kanban de l'orga (le numéro est dans l'URL du projet).
+projects: ["TaskF0RCE/1"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Quoi ?
+      description: Qu'est-ce qu'on veut pouvoir faire ?
+      placeholder: En tant qu'utilisateur, je veux … pour …
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Pourquoi ?
+      description: Quel problème ça règle, ou ce que ça apporte.
+  - type: textarea
+    id: how
+    attributes:
+      label: Idées de solution
+      description: Optionnel. Pistes techniques, maquettes, liens…
+  - type: textarea
+    id: done
+    attributes:
+      label: C'est fini quand…
+      description: Les critères pour dire que la feature est terminée.
+      value: |
+        - [ ] 
+        - [ ] 
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité
+      options:
+        - basse
+        - moyenne
+        - haute
+      default: 1

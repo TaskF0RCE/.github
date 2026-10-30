@@ -1,0 +1,134 @@
+# CI réutilisable : chaque repo l'appelle depuis son propre .github/workflows/ci.yml.
+# Elle détecte la stack (Node, Python, Maven, Gradle) et lance lint, tests et build
+# quand ils existent. Sans stack reconnue, elle passe au vert sans rien faire.
+name: CI (réutilisable)
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Dossier du projet, si le code n'est pas à la racine
+        type: string
+        default: .
+      node-version:
+        type: string
+        default: '22'
+      python-version:
+        type: string
+        default: '3.12'
+      java-version:
+        type: string
+        default: '21'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Ce nom compose le check « ci / build » exigé par la protection de main.
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Détecter la stack
+        id: stack
+        run: |
+          if [ -f package.json ]; then stack=node
+          elif [ -f pyproject.toml ] || [ -f requirements.txt ]; then stack=python
+          elif [ -f pom.xml ]; then stack=maven
+          elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then stack=gradle
+          else stack=none
+          fi
+          echo "stack=$stack" >> "$GITHUB_OUTPUT"
+          echo "Stack détectée : **$stack**" >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- Node.js ----------
+      - if: steps.stack.outputs.stack == 'node'
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ hashFiles(format('{0}/package-lock.json', inputs.working-directory)) != '' && 'npm' || '' }}
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - if: steps.stack.outputs.stack == 'node'
+        name: Installer, lint, tests, build
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          # Lance un script seulement s'il existe (et pas le "no test specified" de npm init).
+          has() { node -e "const s=(require('./package.json').scripts||{})['$1'];process.exit(s&&!/no test specified/.test(s)?0:1)"; }
+          for script in lint test build; do
+            if has "$script"; then npm run "$script"; else echo "Pas de script « $script » : ignoré."; fi
+          done
+
+      # ---------- Python ----------
+      - if: steps.stack.outputs.stack == 'python'
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - if: steps.stack.outputs.stack == 'python'
+        name: Installer, lint, tests
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ] && grep -qE '^\[(project|build-system)\]' pyproject.toml; then pip install -e .; fi
+          if [ -f ruff.toml ] || [ -f .ruff.toml ] || grep -qs '^\[tool.ruff' pyproject.toml; then
+            pip install ruff && ruff check .
+          else
+            echo "Pas de config ruff : lint ignoré."
+          fi
+          if [ -n "$(find . -path ./.venv -prune -o \( -name 'test_*.py' -o -name '*_test.py' \) -print -quit)" ]; then
+            pip install pytest && pytest
+          else
+            echo "Pas de tests : ignorés."
+          fi
+
+      # ---------- Java ----------
+      - if: steps.stack.outputs.stack == 'maven' || steps.stack.outputs.stack == 'gradle'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          # Gradle a son propre cache (setup-gradle) ; Maven utilise celui de setup-java.
+          cache: ${{ steps.stack.outputs.stack == 'maven' && 'maven' || '' }}
+      - if: steps.stack.outputs.stack == 'maven'
+        name: Build Maven
+        run: if [ -f mvnw ]; then ./mvnw -B verify; else mvn -B verify; fi
+      - if: steps.stack.outputs.stack == 'gradle'
+        uses: gradle/actions/setup-gradle@v6
+      - if: steps.stack.outputs.stack == 'gradle'
+        name: Build Gradle
+        run: if [ -f gradlew ]; then chmod +x gradlew && ./gradlew build; else gradle build; fi
+
+      - if: steps.stack.outputs.stack == 'none'
+        name: Rien à vérifier
+        run: echo "Aucune stack reconnue. Ajoute un package.json, requirements.txt, pom.xml… ou adapte ce workflow."
+
+  # Sur le plan gratuit, GitHub ne protège pas main dans les repos privés.
+  # Ce job rend visible (CI rouge sur main) tout commit poussé sans passer par une PR.
+  main-guard:
+    name: garde-fou main
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Vérifier que le commit vient d'une PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          parents=$(gh api "repos/$REPO/commits/$SHA" --jq '.parents | length')
+          if [ "$parents" = "0" ]; then echo "Premier commit du repo : OK."; exit 0; fi
+          merged=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq 'map(select(.merged_at != null)) | length')
+          if [ "$merged" = "0" ]; then
+            echo "::error::Commit poussé directement sur main, sans PR. Passe par une branche + PR (voir CONTRIBUTING.md)."
+            exit 1
+          fi
+          echo "Commit issu d'une PR mergée : OK."

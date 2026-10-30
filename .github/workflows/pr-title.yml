@@ -1,0 +1,27 @@
+# Vérifie que le titre de la PR suit les Conventional Commits.
+# Le titre devient le message du commit sur main (merge en squash)
+# et release-please s'en sert pour calculer la version.
+name: Titre de PR (réutilisable)
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  title:
+    name: titre conventionnel
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Vérifier le titre
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([A-Za-z0-9._/ -]+\))?!?: [^ ].*$'
+          if printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "✓ « $TITLE »"
+          else
+            echo "::error::Titre « $TITLE » non conforme. Exemples : « feat: ajoute la connexion », « fix(api): corrige le timeout », « docs: met à jour le README »."
+            exit 1
+          fi
